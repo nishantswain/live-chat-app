@@ -1,0 +1,199 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Company {
+  id           Int    @id @default(autoincrement())
+  name         String
+  email        String
+  users        User[]
+  recordStatus Status @default(ACTIVE)
+}
+
+// User has one to many relationship with Workspace
+model User {
+  id                       String          @id @default(uuid())
+  email                    String          @unique
+  firstname                String?
+  lastname                 String?
+  password                 String
+  role                     Role            @default(ADMIN)
+  usercreatedWorkspaces    Workspace[]     @relation("User_owned_workspaces")
+  worksapceUserIsAddedTo   Workspace[]     @relation("Worspaces_user_added_to")
+  company                  Company?        @relation(fields: [companyId], references: [id])
+  companyId                Int?
+  boards                   Board[]
+  buckets                  Bucket[]
+  checkListItems           CheckListItem[]
+  comments                 Comment[]
+  reactions                Reaction[]
+  bucketItemsUserisAddedTo BucketItem[]    @relation("Bucket_items_user_is_added_to")
+  createdBy                String
+  createdAt                DateTime        @default(now())
+  updatedAt                DateTime        @updatedAt
+  recordStatus             Status          @default(ACTIVE)
+}
+
+model Workspace {
+  id                    String   @id @default(uuid())
+  name                  String
+  createdBy             User     @relation("User_owned_workspaces", fields: [creatorId], references: [id])
+  creatorId             String
+  usersAddedToWorkspace User[]   @relation("Worspaces_user_added_to")
+  boards                Board[]
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  recordStatus          Status   @default(ACTIVE)
+}
+
+model Board {
+  id           String     @id @default(uuid())
+  name         String
+  createdBy    User       @relation(fields: [createdById], references: [id])
+  createdById  String
+  workspace    Workspace? @relation(fields: [workspaceId], references: [id])
+  workspaceId  String?
+  buckets      Bucket[]
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  recordStatus Status     @default(ACTIVE)
+}
+
+model Bucket {
+  id           String       @id @default(uuid())
+  name         String
+  createdBy    User         @relation(fields: [createdById], references: [id])
+  createdById  String
+  board        Board?       @relation(fields: [boardId], references: [id])
+  boardId      String?
+  bucketItems  BucketItem[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  recordStatus Status       @default(ACTIVE)
+}
+
+model BucketItem {
+  id                     String          @id @default(uuid())
+  title                  String
+  description            String
+  taskProgress           TaskProgress    @default(TODO)
+  startDate              DateTime
+  endDate                DateTime
+  type                   BucketItemType  @default(DEFAULT)
+  sortOrder              Int             @default(autoincrement())
+  checklist              CheckListItem[]
+  comments               Comment[]
+  bucket                 Bucket?         @relation(fields: [bucketId], references: [id])
+  bucketId               String?
+  usersAddedToBucketItem User[]          @relation("Bucket_items_user_is_added_to")
+  createdAt              DateTime        @default(now())
+  updatedAt              DateTime        @updatedAt
+  recordStatus           Status          @default(ACTIVE)
+}
+
+model BucketItemOrder {
+  id             String   @id @default(uuid())
+  bucketItemId   String
+  nextItemId     String
+  previousItemId String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  recordStatus   Status   @default(ACTIVE)
+}
+
+model BucketItemLinks {
+  id                 String   @id @default(uuid())
+  parentBucketItemId String
+  childBucketItemId  String
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  recordStatus       Status   @default(ACTIVE)
+}
+
+model CheckListItem {
+  id           String         @id @default(uuid())
+  name         String
+  createdBy    User           @relation(fields: [createdById], references: [id])
+  createdById  String
+  bucketItem   BucketItem?    @relation(fields: [bucketItemId], references: [id])
+  isComplete   CompleteStatus @default(NO)
+  bucketItemId String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  recordStatus Status         @default(ACTIVE)
+}
+
+model Comment {
+  id           String      @id @default(uuid())
+  comment      String?
+  author       User?       @relation(fields: [authorId], references: [id])
+  authorId     String?
+  BucketItem   BucketItem? @relation(fields: [bucketItemId], references: [id])
+  bucketItemId String?
+  reactions    Reaction[]
+  replies      Comment[]   @relation("Comment_replies")
+  Comment      Comment?    @relation("Comment_replies", fields: [parentId], references: [id])
+  parentId     String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  recordStatus Status      @default(ACTIVE)
+}
+
+model Reaction {
+  id           String       @id @default(uuid())
+  reaction     ReactionType
+  author       User         @relation(fields: [authorId], references: [id])
+  authorId     String
+  Comment      Comment?     @relation(fields: [commentId], references: [id])
+  commentId    String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  recordStatus Status       @default(ACTIVE)
+}
+
+enum Role {
+  USER
+  ADMIN
+  GUEST
+}
+
+enum BucketItemType {
+  DEFAULT
+  SPECIAL
+}
+
+enum ReactionType {
+  LIKE
+  LAUGH
+  CRY
+  HEART
+  SUPPORT
+  CELEBRATE
+  SMILE
+}
+
+enum Status {
+  ACTIVE
+  INACTIVE
+  DELETED
+  ARCHIVED
+}
+
+enum TaskProgress {
+  TODO
+  INPROGRESS
+  COMPLETED
+}
+
+enum CompleteStatus {
+  YES
+  NO
+}
